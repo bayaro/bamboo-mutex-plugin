@@ -28,11 +28,11 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
         PlanKey thisPlanKey = PlanKeys.getPlanKey(chain.getKey());
         Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
         String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
-        if (planMutexKey != null) {
+        if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
             PlanKey planToWaitFor = runningPlans.putIfAbsent(planMutexKey, thisPlanKey);
             while (planToWaitFor != null) {
+                log.info("Waiting for plan " + planToWaitFor + " holding mutex '" + planMutexKey + "' to complete before executing " + thisPlanKey);
                 while (isPlanCurrentlyExecuting(planToWaitFor)) {
-                    log.info("Waiting for plan " + planToWaitFor + " holding mutex '" + planMutexKey + "' to complete before executing " + thisPlanKey);
                     Thread.sleep(1000);
                 }
                 if (runningPlans.replace(planMutexKey, planToWaitFor, thisPlanKey)) {
@@ -50,7 +50,7 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
         PlanKey thisPlanKey = PlanKeys.getPlanKey(chain.getKey());
         Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
         String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
-        if (planMutexKey != null) {
+        if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
             runningPlans.remove(planMutexKey, thisPlanKey);
             log.info("Released mutex '" + planMutexKey + "' for build of " + thisPlanKey);
         }
