@@ -58,6 +58,8 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
 
     private boolean isPlanCurrentlyExecuting(PlanKey planKey) {
         Plan plan = planManager.getPlanByKey(planKey);
+        if (plan == null)
+          return false;
         return plan.isExecuting() || plan.isActive();
     }
 
