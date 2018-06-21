@@ -60,7 +60,7 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
         Plan plan = planManager.getPlanByKey(planKey);
         if (plan == null)
           return false;
-        return plan.isExecuting() || plan.isActive();
+        return plan.isExecuting();
     }
 
     public void setPlanManager(PlanManager planManager) {
