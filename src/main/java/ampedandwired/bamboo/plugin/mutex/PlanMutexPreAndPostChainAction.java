@@ -9,6 +9,7 @@ import com.atlassian.bamboo.plan.Plan;
 import com.atlassian.bamboo.plan.PlanKey;
 import com.atlassian.bamboo.plan.PlanKeys;
 import com.atlassian.bamboo.plan.PlanManager;
+import com.atlassian.bamboo.builder.LifeCycleState;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,40 +19,54 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChainAction {
-    public static final Logger log = Logger.getLogger(PlanMutexPreAndPostChainAction.class);
-    public static final String PLAN_MUTEX_KEY = "custom.bamboo.planMutex.list";
-    private PlanManager planManager;
+  public static final Logger log = Logger.getLogger(PlanMutexPreAndPostChainAction.class);
+  public static final String PLAN_MUTEX_KEY = "custom.bamboo.planMutex.list";
+  private PlanManager planManager;
 
-    private static ConcurrentMap<String, UUID> runningPlans = new ConcurrentHashMap<String, UUID>();
-    
-    @Override
-    public void execute(@NotNull Chain chain, @NotNull ChainExecution chainExecution) throws Exception {
-        PlanKey thisPlanKey = PlanKeys.getPlanKey(chain.getKey());
-        UUID uuid = java.util.UUID.randomUUID();
-        
-        Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
-        String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
-        
-        if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
-          while(runningPlans.putIfAbsent(planMutexKey, uuid) != uuid)
-          {
-            log.info("Still waiting for mutex '" + planMutexKey + "' with plan " + thisPlanKey);
-            Thread.sleep(1000);
-          }
-          
-          log.info("Locked mutex '" + planMutexKey + "' with plan " + thisPlanKey);
-        }
-    }
+  private static ConcurrentMap<String, String> runningPlans = new ConcurrentHashMap<String, String>();
 
-    @Override
-    public void execute(Chain chain, ChainResultsSummary chainResultsSummary, ChainExecution chainExecution) throws InterruptedException, Exception {
-        PlanKey thisPlanKey = PlanKeys.getPlanKey(chain.getKey());
-        Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
-        String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
-        
-        if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
-          runningPlans.remove(planMutexKey);
-          log.info("Released mutex '" + planMutexKey + "' with plan " + thisPlanKey);
-        }
+  @Override
+  public void execute(@NotNull Chain chain, @NotNull ChainExecution chainExecution) throws Exception {
+    String id = chainExecution.getPlanResultKey().toString();
+    Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
+    String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
+
+    log.info("Pre build chain action of id " + id);
+
+    if (planMutexKey != null && !planMutexKey.trim().isEmpty())
+      log.info("Starting to wait for mutex '" + planMutexKey + "' with id " + id);{
+      while (runningPlans.putIfAbsent(planMutexKey, id) != id) {
+        Thread.sleep(1000);
+      }
+
+      // we have the mutex, check if we are still in running state
+      if(chainExecution.isStopping() || chainExecution.isStopRequested())
+      {
+        log.info("Released mutex '" + planMutexKey + "' with id " + id + " since we are already stopped");
+        runningPlans.remove(planMutexKey, id);
+      }
+      else
+      {
+        log.info("Locked mutex '" + planMutexKey + "' with id " + id);
+      }
     }
+  }
+
+  @Override
+  public void execute(Chain chain, ChainResultsSummary chainResultsSummary, ChainExecution chainExecution)
+      throws InterruptedException, Exception {
+    String id = chainExecution.getPlanResultKey().toString();
+    Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
+    String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
+
+    log.info("Post chain action of id " + id);
+
+    if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
+      if (runningPlans.remove(planMutexKey, id)) {
+        log.info("Released mutex '" + planMutexKey + "' with id " + id);
+      } else {
+        log.error("Did not release mutex '" + planMutexKey + "' with id " + id + " since it was claimed by " + runningPlans.get(planMutexKey));
+      }
+    }
+  }
 }
