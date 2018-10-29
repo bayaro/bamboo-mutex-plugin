@@ -31,10 +31,9 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
     Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
     String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
 
-    log.info("Pre build chain action of id " + id);
-
     if (planMutexKey != null && !planMutexKey.trim().isEmpty())
-      log.info("Starting to wait for mutex '" + planMutexKey + "' with id " + id);{
+    {
+      log.info("Starting to wait for mutex '" + planMutexKey + "' with id " + id);
       while (runningPlans.putIfAbsent(planMutexKey, id) != id) {
         Thread.sleep(1000);
       }
@@ -58,8 +57,6 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
     String id = chainExecution.getPlanResultKey().toString();
     Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
     String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
-
-    log.info("Post chain action of id " + id);
 
     if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
       if (runningPlans.remove(planMutexKey, id)) {

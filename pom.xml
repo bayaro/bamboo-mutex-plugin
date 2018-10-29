@@ -14,7 +14,7 @@
 
     <groupId>com.github.ampedandwired</groupId>
     <artifactId>bamboo-mutex-plugin</artifactId>
-    <version>1.14-SNAPSHOT</version>
+    <version>1.17-SNAPSHOT</version>
     <organization>
         <name>ampedandwired</name>
         <url>https://github.com/ampedandwired</url>
