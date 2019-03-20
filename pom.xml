@@ -3,15 +3,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Comment out this parent POM declaration if you get the following error when running: -->
-    <!--  "Maven 2.1.0 and 2.2.0 produce incorrect GPG signatures and checksums respectively" -->
-    <!-- This error happens because atlassian SDK still uses a really old maven version (2.1.0) -->
-    <parent>
-        <groupId>org.sonatype.oss</groupId>
-        <artifactId>oss-parent</artifactId>
-        <version>8</version>
-    </parent>
-
     <groupId>com.github.ampedandwired</groupId>
     <artifactId>bamboo-mutex-plugin</artifactId>
     <version>1.18-SNAPSHOT</version>
