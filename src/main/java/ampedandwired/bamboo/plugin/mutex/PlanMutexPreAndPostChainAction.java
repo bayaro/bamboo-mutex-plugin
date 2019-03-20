@@ -11,10 +11,35 @@ import com.atlassian.bamboo.chains.plugins.PreChainAction;
 import java.util.Map;
 import java.util.UUID;
 
-public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChainAction {
+import com.atlassian.bamboo.v2.build.agent.BuildAgentRequirementFilter;
+import com.atlassian.bamboo.v2.build.agent.BuildAgent;
+import com.atlassian.bamboo.v2.build.CommonContext;
+import com.atlassian.bamboo.v2.build.agent.capability.MinimalRequirementSet;
+import java.util.Collection;
+import com.atlassian.bamboo.deployments.execution.DeploymentContext;
+
+public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChainAction, BuildAgentRequirementFilter {
     public static final String PLAN_MUTEX_KEY = "custom.bamboo.planMutex.list";
 
     private static PlanMutexProcessor pmProcessor = PlanMutexProcessor.getInstance();
+
+    public Collection<BuildAgent> filter(CommonContext commonContext,
+			Collection<BuildAgent> availableAgents, MinimalRequirementSet requirements) {
+         if ( !(commonContext instanceof DeploymentContext) ) {
+              return availableAgents;
+         }
+         String id = commonContext.getEntityKey().toString();
+         String planMutexKey = ((DeploymentContext)commonContext).getEnvironmentName();
+         try {
+			  // kludge, there are no way to get the environment from DeploymentFinishedEvent,
+			  // so we store in mutex map the environment under DeploymentResultId key
+              pmProcessor.deploymentMutexes.put( "" + ((DeploymentContext)commonContext).getDeploymentResultId(), planMutexKey + ":" + id );
+              pmProcessor.lockMutex( planMutexKey, id );
+              return availableAgents;
+         } catch(Exception e) {
+              return null;
+         }
+    }
 
     @NotNull
     @Override

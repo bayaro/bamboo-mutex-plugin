@@ -6,7 +6,6 @@
     <version>${project.version}</version>
     <vendor name="${project.organization.name}" url="${project.organization.url}"/>
   </plugin-info>
-  <!-- internationalize your plugin -->
   <resource type="i18n" name="ampedandwired language" location="english"/>
   <preChainAction key="planMutexPreChainAction" name="Prevent plans from running at the same time (acquires mutex)" class="ampedandwired.bamboo.plugin.mutex.PlanMutexPreAndPostChainAction">
     <description>Prevent plans from running simultaneously by acquiring mutex</description>
@@ -14,6 +13,12 @@
   <postChainAction key="planMutexPostChainAction" name="Prevent plans from running at the same time (releases mutex)" class="ampedandwired.bamboo.plugin.mutex.PlanMutexPreAndPostChainAction">
     <description>Prevent plans from running simultaneously by releasing mutex</description>
   </postChainAction>
+  <buildAgentRequirementFilter key="mutex_buildAgentRequirementFilter" name="mutex_buildAgentRequirementFilter" class="ampedandwired.bamboo.plugin.mutex.PlanMutexConfigurationPlugin">
+    <description>Prevent plans from running simultaneously by acquiring mutex</description>
+  </buildAgentRequirementFilter>
+  <bambooEventListener key="buildActivityListener" name="Build Activity Listener" class="ampedandwired.bamboo.plugin.mutex.PlanMutexActivityListener">
+    <description>Prevent plans from running simultaneously by releasing mutex</description>
+  </bambooEventListener>
   <additionalBuildConfigurationPlugin key="planMutexConfig" name="Plan Mutex Configuration"
         class="ampedandwired.bamboo.plugin.mutex.PlanMutexConfigurationPlugin">
     <description>Plugin to configure what plans must not run simultaneously</description>
