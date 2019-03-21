@@ -11,7 +11,7 @@ import java.util.Iterator;
 public final class PlanMutexProcessor {
     private static final Logger log = Logger.getLogger(PlanMutexProcessor.class);
     private static ConcurrentMap<String, String> runningPlans = new ConcurrentHashMap<String, String>();
-    private static Map<String, Long> lockOrder = new HashMap<String, Long>();
+    private static ConcurrentMap<String, Map<String, Long>> lockOrder = new ConcurrentHashMap<String, Map<String, Long>>();
     public static Map<String, String> deploymentMutexes = new HashMap<String, String>();
 
     public static volatile PlanMutexProcessor _instance = null;
@@ -43,7 +43,8 @@ public final class PlanMutexProcessor {
         int i = 0;
         long myTime = System.currentTimeMillis();
         boolean imFirst = true;
-        lockOrder.putIfAbsent( id, myTime );
+        lockOrder.putIfAbsent( planMutexKey, new HashMap<String, Long>() );
+        lockOrder.get( planMutexKey ).putIfAbsent( id, myTime );
         while ( true ) {
             if ( i % 10 == 0 ) {
                 log.info( "****** " + i + " " + planMutexKey + ":" + id + " >>> " + runningPlans.toString() + " >>> " + lockOrder.toString() );
@@ -51,11 +52,11 @@ public final class PlanMutexProcessor {
             i++;
             if ( i > 3600 ) return; // 1 hour
 
-            Iterator it = lockOrder.entrySet().iterator();
+            Iterator it = lockOrder.get( planMutexKey ).entrySet().iterator();
             imFirst = true;
             while (it.hasNext()) {
                 Map.Entry pair = (Map.Entry)it.next();
-                if ( (Long)pair.getValue() < myTime ) {
+                if ( (Long)(pair.getValue()) < myTime ) {
                     imFirst = false;
                     break;
                 }
@@ -86,7 +87,7 @@ public final class PlanMutexProcessor {
             //runningPlans.remove(planMutexKey, runningPlans.get(planMutexKey) );
             //msg = "=!=!=!= Mutex '" + planMutexKey + "' released with id " + runningPlans.get(planMutexKey);
         }
-        lockOrder.remove( id );
+        lockOrder.get( planMutexKey ).remove( id );
     }
 
     public String get( String planMutexKey ) {
