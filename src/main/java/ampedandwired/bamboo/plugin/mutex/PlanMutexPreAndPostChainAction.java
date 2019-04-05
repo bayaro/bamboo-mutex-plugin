@@ -24,37 +24,33 @@ public class PlanMutexPreAndPostChainAction implements PreChainAction, PostChain
     private static PlanMutexProcessor pmProcessor = PlanMutexProcessor.getInstance();
 
     public Collection<BuildAgent> filter(CommonContext commonContext,
-			Collection<BuildAgent> availableAgents, MinimalRequirementSet requirements) {
-         if ( !(commonContext instanceof DeploymentContext) ) {
-              return availableAgents;
-         }
-         String id = commonContext.getEntityKey().toString();
-         String planMutexKey = ((DeploymentContext)commonContext).getEnvironmentName();
-         try {
-			  // kludge, there are no way to get the environment from DeploymentFinishedEvent,
-			  // so we store in mutex map the environment under DeploymentResultId key
-              pmProcessor.deploymentMutexes.put( "" + ((DeploymentContext)commonContext).getDeploymentResultId(), planMutexKey + ":" + id );
-              pmProcessor.lockMutex( planMutexKey, id );
-              return availableAgents;
-         } catch(Exception e) {
-              return null;
-         }
+            Collection<BuildAgent> availableAgents, MinimalRequirementSet requirements) {
+        if ( !(commonContext instanceof DeploymentContext) ) {
+            return availableAgents;
+        }
+        String id = commonContext.getEntityKey().toString() + "-" + ((DeploymentContext)commonContext).getDeploymentProjectName();
+        String planMutexKey = ((DeploymentContext)commonContext).getEnvironmentName();
+        // kludge, there are no way to get the environment from DeploymentFinishedEvent,
+        // so we store in mutex map the environment under DeploymentResultId key
+        pmProcessor.deploymentMutexes.put( "" + ((DeploymentContext)commonContext).getDeploymentResultId(), planMutexKey + ":" + id );
+        pmProcessor.lockMutex( planMutexKey, id );
+        return availableAgents;
     }
 
     @NotNull
     @Override
     public void execute(@NotNull Chain chain, @NotNull ChainExecution chainExecution) {
-         String id = chain.getPlanKey().toString();
-         Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
-         String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
+        String id = chain.getPlanKey().toString();
+        Map<String, String> customConfig = chain.getBuildDefinition().getCustomConfiguration();
+        String planMutexKey = customConfig.get(PLAN_MUTEX_KEY);
 
-         if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
-              pmProcessor.lockMutex( planMutexKey, id );
-              // we have the mutex, check if we are still in running state
-              if(chainExecution.isStopping() || chainExecution.isStopRequested()) {
-                   pmProcessor.releaseMutex( planMutexKey, id );
-              }
-         }
+        if (planMutexKey != null && !planMutexKey.trim().isEmpty()) {
+            pmProcessor.lockMutex( planMutexKey, id );
+            // we have the mutex, check if we are still in running state
+            if(chainExecution.isStopping() || chainExecution.isStopRequested()) {
+                pmProcessor.releaseMutex( planMutexKey, id );
+            }
+        }
     }
 
     @Override

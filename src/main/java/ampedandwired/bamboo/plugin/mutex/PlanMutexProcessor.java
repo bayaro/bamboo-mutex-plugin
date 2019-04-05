@@ -11,7 +11,6 @@ import java.util.Iterator;
 public final class PlanMutexProcessor {
     private static final Logger log = Logger.getLogger(PlanMutexProcessor.class);
     private static ConcurrentMap<String, String> runningPlans = new ConcurrentHashMap<String, String>();
-    private static ConcurrentMap<String, Map<String, Long>> lockOrder = new ConcurrentHashMap<String, Map<String, Long>>();
     public static Map<String, String> deploymentMutexes = new HashMap<String, String>();
 
     public static volatile PlanMutexProcessor _instance = null;
@@ -27,41 +26,33 @@ public final class PlanMutexProcessor {
         return _instance;
     }
 
+    private void logg( String msg ) {
+        log.info( msg );
+    }
+
     public void lockMutex( String planMutexKey, String id ) {
-        log.info( ":::::: " + runningPlans.toString() );
-        String msg;
+        logg( "****** L:" + planMutexKey + ":" + id );
+        logg( ":::::: deploymentMutexes: " + deploymentMutexes.toString() );
+        logg( ":::::: runningPlans: " + runningPlans.toString() );
         String lockedBy = runningPlans.get( planMutexKey );
         if ( lockedBy != null ) {
             if ( lockedBy.equals( id ) ) {
-                msg = "====== Mutex '" + planMutexKey + "' already locked by " + lockedBy;
-                log.info( msg );
+                logg( "====== Mutex '" + planMutexKey + "' already locked by " + lockedBy );
                 return;
             }
-            msg = "====== Waiting for mutex '" + planMutexKey + "' locked by " + lockedBy;
-            log.info( msg );
+            logg( "====== Waiting for mutex '" + planMutexKey + "' locked by " + lockedBy );
         }
         int i = 0;
-        long myTime = System.currentTimeMillis();
-        boolean imFirst = true;
-        lockOrder.putIfAbsent( planMutexKey, new HashMap<String, Long>() );
-        lockOrder.get( planMutexKey ).putIfAbsent( id, myTime );
         while ( true ) {
             if ( i % 10 == 0 ) {
-                log.info( "****** " + i + " " + planMutexKey + ":" + id + " >>> " + runningPlans.toString() + " >>> " + lockOrder.toString() );
+                logg( "****** " + i + " " + planMutexKey + ":" + id );
+                logg( ":::::: runningPlans: " + runningPlans.toString() );
             }
             i++;
             if ( i > 3600 ) return; // 1 hour
 
-            Iterator it = lockOrder.get( planMutexKey ).entrySet().iterator();
-            imFirst = true;
-            while (it.hasNext()) {
-                Map.Entry pair = (Map.Entry)it.next();
-                if ( (Long)(pair.getValue()) < myTime ) {
-                    imFirst = false;
-                    break;
-                }
-            }
-            if ( imFirst && ( runningPlans.putIfAbsent(planMutexKey, id) == id) ) {
+            if ( runningPlans.putIfAbsent(planMutexKey, id) == id ) {
+                logg( ":::::: runningPlans: " + runningPlans.toString() );
                 break;
             }
 
@@ -71,26 +62,19 @@ public final class PlanMutexProcessor {
                 return;
             }
         }
-        msg = "====== Mutex '" + planMutexKey + "' was locked with id " + id;
-        log.info( msg );
+        logg( "====== Mutex '" + planMutexKey + "' was locked with id " + id );
     }
 
     public void releaseMutex( String planMutexKey, String id ) {
-        log.info( ":::::: " + runningPlans.toString() );
-        String msg;
+        logg( "****** R:" + planMutexKey + ":" + id );
+        logg( ":::::: deploymentMutexes: " + deploymentMutexes.toString() );
+        logg( ":::::: runningPlans: " + runningPlans.toString() );
         if (runningPlans.remove(planMutexKey, id)) {
-            msg = "====== Mutex '" + planMutexKey + "' released with id " + id;
-            log.info( msg );
+            logg( "====== Mutex '" + planMutexKey + "' released with id " + id );
         } else {
-            msg = "====== Mutex '" + planMutexKey + "' did not released with id " + id + " since it was claimed by " + runningPlans.get(planMutexKey);
-            log.error( msg );
+            log.error( "====== Mutex '" + planMutexKey + "' did not released with id " + id + " since it was claimed by " + runningPlans.get(planMutexKey) );
             //runningPlans.remove(planMutexKey, runningPlans.get(planMutexKey) );
             //msg = "=!=!=!= Mutex '" + planMutexKey + "' released with id " + runningPlans.get(planMutexKey);
         }
-        lockOrder.get( planMutexKey ).remove( id );
-    }
-
-    public String get( String planMutexKey ) {
-        return runningPlans.get( planMutexKey );
     }
 }
